@@ -70,19 +70,19 @@
 
 
 - (void)didSessionRouteChange:(NSNotification *)notification {
-  NSDictionary *interuptionDict = notification.userInfo;
-  NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
+//   NSDictionary *interuptionDict = notification.userInfo;
+//   NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
 
-  switch (routeChangeReason) {
-      case AVAudioSessionRouteChangeReasonCategoryChange: {
-          NSError* error;
-          [[AVAudioSession sharedInstance] overrideOutputAudioPort:_speakerOn? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
-      }
-      break;
+//   switch (routeChangeReason) {
+//       case AVAudioSessionRouteChangeReasonCategoryChange: {
+//           NSError* error;
+//           [[AVAudioSession sharedInstance] overrideOutputAudioPort:_speakerOn? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
+//       }
+//       break;
 
-    default:
-      break;
-  }
+//     default:
+//       break;
+//   }
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult) result {
