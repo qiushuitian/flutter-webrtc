@@ -149,7 +149,9 @@ class RTCVideoRenderer {
 
 class RTCVideoView extends StatefulWidget {
   final RTCVideoRenderer _renderer;
-  RTCVideoView(this._renderer);
+//  RTCVideoView(this._renderer);
+  // web端也给key
+  RTCVideoView(this._renderer, {Key key}) : super(key: key);
   @override
   _RTCVideoViewState createState() => new _RTCVideoViewState(_renderer);
 }
