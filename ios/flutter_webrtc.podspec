@@ -16,8 +16,20 @@ A new flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
   s.dependency 'Libyuv', '1703'
-  s.dependency 'GoogleWebRTC', '1.1.29400'
   s.ios.deployment_target = '10.0'
   s.static_framework = true
-end
+  s.vendored_frameworks = ["Frameworks/frameworks/WebRTC.framework"]
 
+  s.default_subspec = 'Core'
+
+  s.subspec 'Core' do |core|
+  end
+
+  s.subspec 'BroadcastExtension' do |ext|
+    ext.source_files = 'BroadcastClasses/**/*'
+    ext.public_header_files = 'BroadcastClasses/**/*.h'
+    ext.vendored_frameworks = ["Frameworks/frameworks/WebRTC.framework"]
+    # For app extensions, disabling code paths using unavailable API
+    ext.pod_target_xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => 'MYLIBRARY_APP_EXTENSIONS=1' }
+  end
+end

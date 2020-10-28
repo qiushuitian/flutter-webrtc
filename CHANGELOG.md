@@ -1,6 +1,49 @@
-## Changelog
+# Changelog
 
 --------------------------------------------
+[0.3.3] - 2020.09.14
+
+* Add RTCDTMFSender for mobile, web and macOS.
+* Improve RenegotiationNeededCallback.
+* Refactor RTCVideoView for web and solve the resize problem.
+* Reduce code size.
+
+[0.3.2] - 2020.09.11
+
+* Reorganize the directory structure.
+* Replace class name navigator to MediaDevices.
+* Downgrade pedantic version to 1.9.0.
+
+[0.3.1] - 2020.09.11
+
+* [Dart] Apply pedantic linter and more rigorous analysis options.
+
+[0.3.0+1] - 2020.09.06
+
+* [Dart] FIX - missing null check onIceGatheringState (web)
+
+[0.3.0] - 2020.09.05
+
+* [Dart] Improve RTCVideoView.
+* [Android] Refactors Android plugin alongside the embedding V2 migration.
+* [Dart] Fix .ownerTag not defined for web.
+* [Dart] Added label as read only property.
+* [macOS] Updated WebRTC framework to work with AppStoreConnect.
+* [Dart] Make 'constraints' argument optional.
+* [Dart] Make createOffer constraints optional.
+* [iOS/Android/Web] Adding createLocalMediaStream method to PeerConnectionFactory.
+* [Web] Fixing multiple video renderers on the same HTML page for Flutter Web.
+* [iOS] Add peerConnectionId to data channel EventChannel.
+* [Android] Add library module ProGuard configuration file.
+* [iOS] Fix typo in render size change check condition
+* [README] Add missed Android usage hint.
+
+[0.2.8] - 2020.04.22
+
+* [macOS/iOS] Fix typo in render size change check condition.
+* [macOS] Fix hot restart videoCapturer crash.
+* [Android] Fix Android crash when getUserVideo.
+
 [0.2.7] - 2020.03.15
 
 * [macOS] Fix crash with H264 HW Encoder.
@@ -8,7 +51,6 @@
 * [Android] Removed duplicate method that was causing compilation error.
 * [iOS] Use MrAlek Libyuv pod fixing incompatibility with FirebaseFirestore.
 * [iOS] Upgrade GoogleWebRTC dependency to 1.1.29400.
-
 
 [0.2.6] - 2020.02.03
 

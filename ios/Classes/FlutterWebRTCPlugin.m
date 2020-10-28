@@ -6,6 +6,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <WebRTC/WebRTC.h>
+#import <ReplayKit/ReplayKit.h>
 
 
 
@@ -24,7 +25,8 @@
     FlutterMethodChannel* channel = [FlutterMethodChannel
                                      methodChannelWithName:@"FlutterWebRTC.Method"
                                      binaryMessenger:[registrar messenger]];
-    UIViewController *viewController = (UIViewController *)registrar.messenger;
+//    UIViewController *viewController = (UIViewController *)registrar.messenger;
+    UIViewController * viewController = [UIApplication sharedApplication].delegate.window.rootViewController;
     FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
                                                                        registrar:registrar
                                                                        messenger:[registrar messenger]
@@ -70,24 +72,28 @@
 
 
 - (void)didSessionRouteChange:(NSNotification *)notification {
-//   NSDictionary *interuptionDict = notification.userInfo;
-//   NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
+  NSDictionary *interuptionDict = notification.userInfo;
+  NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
 
-//   switch (routeChangeReason) {
-//       case AVAudioSessionRouteChangeReasonCategoryChange: {
-//           NSError* error;
-//           [[AVAudioSession sharedInstance] overrideOutputAudioPort:_speakerOn? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
-//       }
-//       break;
+  switch (routeChangeReason) {
+      case AVAudioSessionRouteChangeReasonCategoryChange: {
+          NSError* error;
+          [[AVAudioSession sharedInstance] overrideOutputAudioPort:_speakerOn? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
+      }
+      break;
 
-//     default:
-//       break;
-//   }
+    default:
+      break;
+  }
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult) result {
 
-    if ([@"createPeerConnection" isEqualToString:call.method]) {
+    if ([@"initialize" isEqualToString:call.method]) {
+        result(@"");
+    } else if ([@"deinitialize" isEqualToString:call.method]) {
+        result(@"");
+    } else if ([@"createPeerConnection" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSDictionary* configuration = argsMap[@"configuration"];
         NSDictionary* constraints = argsMap[@"constraints"];
@@ -120,6 +126,8 @@
         NSDictionary* argsMap = call.arguments;
         NSDictionary* constraints = argsMap[@"constraints"];
         [self getDisplayMedia:constraints result:result];
+    } else if ([@"createLocalMediaStream" isEqualToString:call.method]) {
+        [self createLocalMediaStream:result];
     } else if ([@"getSources" isEqualToString:call.method]) {
         [self getSources:result];
     } else if ([@"mediaStreamGetTracks" isEqualToString:call.method]) {
@@ -233,6 +241,39 @@
         {
             [self peerConnectionSetRemoteDescription:description peerConnection:peerConnection result:result];
         }else{
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+                                       message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+                                       details:nil]);
+        }
+    } else if ([@"sendDtmf" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* tone = argsMap[@"tone"];
+        int duration = ((NSNumber*)argsMap[@"duration"]).intValue;
+        int interToneGap = ((NSNumber*)argsMap[@"gap"]).intValue;
+        
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection) {
+   
+             RTCRtpSender* audioSender = nil ;
+            for( RTCRtpSender *rtpSender in peerConnection.senders){
+                if([[[rtpSender track] kind] isEqualToString:@"audio"]) {
+                    audioSender = rtpSender;
+                }
+            }
+            if(audioSender){
+            NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+            [queue addOperationWithBlock:^{
+                double durationMs = duration / 1000.0;
+		        double interToneGapMs = interToneGap / 1000.0;
+                [audioSender.dtmfSender insertDtmf :(NSString *)tone
+                duration:(NSTimeInterval) durationMs interToneGap:(NSTimeInterval)interToneGapMs];
+                NSLog(@"DTMF Tone played ");
+            }];
+            }
+            
+            result(@{@"result": @"success"});
+        } else {
             result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
                                        message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
                                        details:nil]);
@@ -377,25 +418,23 @@
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
         
         RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
-        if (!peerConnection) {
-            return;
+        if (peerConnection) {
+            [peerConnection close];
+            [self.peerConnections removeObjectForKey:peerConnectionId];
+            
+            // Clean up peerConnection's streams and tracks
+            [peerConnection.remoteStreams removeAllObjects];
+            [peerConnection.remoteTracks removeAllObjects];
+            
+            // Clean up peerConnection's dataChannels.
+            NSMutableDictionary<NSNumber *, RTCDataChannel *> *dataChannels = peerConnection.dataChannels;
+            for (NSNumber *dataChannelId in dataChannels) {
+                dataChannels[dataChannelId].delegate = nil;
+                // There is no need to close the RTCDataChannel because it is owned by the
+                // RTCPeerConnection and the latter will close the former.
+            }
+            [dataChannels removeAllObjects];
         }
-        [peerConnection close];
-        [self.peerConnections removeObjectForKey:peerConnectionId];
-        
-        // Clean up peerConnection's streams and tracks
-        [peerConnection.remoteStreams removeAllObjects];
-        [peerConnection.remoteTracks removeAllObjects];
-        
-        // Clean up peerConnection's dataChannels.
-        NSMutableDictionary<NSNumber *, RTCDataChannel *> *dataChannels
-        = peerConnection.dataChannels;
-        for (NSNumber *dataChannelId in dataChannels) {
-            dataChannels[dataChannelId].delegate = nil;
-            // There is no need to close the RTCDataChannel because it is owned by the
-            // RTCPeerConnection and the latter will close the former.
-        }
-        [dataChannels removeAllObjects];
         result(nil);
     } else if ([@"createVideoRenderer" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
@@ -523,17 +562,59 @@
         }
     } else if ([@"setConfiguration" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
-            NSString* peerConnectionId = argsMap[@"peerConnectionId"];
-            NSDictionary* configuration = argsMap[@"configuration"];
-            RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
-            if(peerConnection) {
-                [self peerConnectionSetConfiguration:[self RTCConfiguration:configuration] peerConnection:peerConnection];
-                result(nil);
-            } else {
-                result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
-                                           message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
-                                           details:nil]);
-            }
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSDictionary* configuration = argsMap[@"configuration"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection) {
+            [self peerConnectionSetConfiguration:[self RTCConfiguration:configuration] peerConnection:peerConnection];
+            result(nil);
+        } else {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+                                       message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+                                       details:nil]);
+        }
+    } else if ([@"openBroadcastPicker" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* preferredExtension = argsMap[@"preferredExtension"];
+        
+        if (@available(iOS 12.0, *)) {
+            RPSystemBroadcastPickerView* broadcastPicker = [[RPSystemBroadcastPickerView alloc] initWithFrame:CGRectZero];
+            broadcastPicker.preferredExtension = preferredExtension;
+            broadcastPicker.backgroundColor = [UIColor clearColor];
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void){
+                [self.viewController.view addSubview:broadcastPicker];
+                UIButton* tap = [broadcastPicker.subviews firstObject];
+                [tap sendActionsForControlEvents:UIControlEventTouchUpInside];
+            });
+        } else {
+            // Fallback on earlier versions
+        }
+        
+        result(nil);
+    } else if ([@"setUserData" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* suiteName = argsMap[@"suiteName"];
+        NSString* nickname = argsMap[@"nickname"];
+        NSString* roomId = argsMap[@"roomId"];
+        NSString* roomSecret = argsMap[@"roomSecret"];
+        
+        NSUserDefaults* userDefaults = [[NSUserDefaults alloc] initWithSuiteName:suiteName];
+        [userDefaults setObject:nickname forKey:@"nickname"];
+        [userDefaults setObject:roomId forKey:@"roomId"];
+        [userDefaults setObject:roomSecret forKey:@"roomSecret"];
+        
+        result(nil);
+    } else if ([@"removeUserData" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* suiteName = argsMap[@"suiteName"];
+        
+        NSUserDefaults* userDefaults = [[NSUserDefaults alloc] initWithSuiteName:suiteName];
+        [userDefaults removeObjectForKey:@"nickname"];
+        [userDefaults removeObjectForKey:@"roomId"];
+        [userDefaults removeObjectForKey:@"roomSecret"];
+        
+        result(nil);
     } else {
         result(FlutterMethodNotImplemented);
     }

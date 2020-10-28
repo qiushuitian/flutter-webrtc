@@ -1,18 +1,21 @@
 # Flutter-WebRTC
+
 [![Financial Contributors on Open Collective](https://opencollective.com/flutter-webrtc/all/badge.svg?label=financial+contributors)](https://opencollective.com/flutter-webrtc) [![pub package](https://img.shields.io/pub/v/flutter_webrtc.svg)](https://pub.dartlang.org/packages/flutter_webrtc) [![Gitter](https://badges.gitter.im/flutter-webrtc/Lobby.svg)](https://gitter.im/flutter-webrtc/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 WebRTC plugin for Flutter Mobile/Desktop/Web
 
 ## Functionality
-| Feature | Android | iOS | [Web](https://flutter.dev/web) | macOS | Windows | Linux | [Fuchsia](https://fuchsia.googlesource.com/) |
-| :-------------: | :-------------:| :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
-| Audio/Video | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | [WIP] | [WIP] | |
-| Data Channel | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | [WIP] | [WIP] | |
-| Screen Capture | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | | | | |
-| Unified-Plan | | |  | | | | |
-| MediaRecorder| :warning: | :warning: | :heavy_check_mark: | | | | |
+
+|    Feature     |      Android       |        iOS         | [Web](https://flutter.dev/web) |       macOS        | Windows | Linux | [Fuchsia](https://fuchsia.googlesource.com/) |
+| :------------: | :----------------: | :----------------: | :----------------------------: | :----------------: | :-----: | :---: | :------------------------------------------: |
+|  Audio/Video   | :heavy_check_mark: | :heavy_check_mark: |       :heavy_check_mark:       | :heavy_check_mark: |  [WIP]  | [WIP] |                                              |
+|  Data Channel  | :heavy_check_mark: | :heavy_check_mark: |       :heavy_check_mark:       | :heavy_check_mark: |  [WIP]  | [WIP] |                                              |
+| Screen Capture | :heavy_check_mark: | :heavy_check_mark: |       :heavy_check_mark:       |                    |         |       |                                              |
+|  Unified-Plan  |                    |                    |                                |                    |         |       |                                              |
+| MediaRecorder  |     :warning:      |     :warning:      |       :heavy_check_mark:       |                    |         |       |                                              |
 
 ## Usage
+
 Add `flutter_webrtc` as a [dependency in your pubspec.yaml file](https://flutter.io/using-packages/).
 
 ### iOS
@@ -39,12 +42,19 @@ Ensure the following permission is present in your Android Manifest file, locate
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+```
+
+If you need to use a Bluetooth device, please add:
+
+```xml
+<uses-permission android:name="android.permission.BLUETOOTH" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 ```
 
 The Flutter project template adds it, so it may already be there.
 
 Also you will need to set your build settings to Java 8, because official WebRTC jar now uses static methods in `EglBase` interface. Just add this to your app level `build.gradle`:
+
 ```groovy
 android {
     //...
@@ -55,14 +65,48 @@ android {
 }
 ```
 
-If necessary, in the same `build.gradle` you will need to increase `minSdkVersion` of `defaultConfig` up to `18` (currently default Flutter generator set it to `16`).
+## LeanCode changes
+
+### Android
+
+The modification requires specific initialization order:
+
+1. You need to call `WebRTCInit.initialize` before using the library. It takes three parameters: notification title, text and channel name. It starts the foreground service and sets up the sticky notification.
+2. You then must call either `getUserMedia` **or** `getDisplayMedia`. This will initialize rest of the library and select correct audio source (if available) on Android.
+3. Only then you can call other methods (e.g. `createPeerConnection`).
+
+App requires one additional permission in main Android Manifest:
+
+```xml
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+```
+
+Additionally, you need to define service for the main application:
+
+```xml
+<service android:name="com.cloudwebrtc.webrtc.GetUserMediaImpl" android:foregroundServiceType="mediaProjection" />
+```
+
+In the main `build.gradle` you will need to increase `minSdkVersion` of `defaultConfig` up to `21` (or 24 because of a bug in Android Studio) and `targetSdkVersion` to `29`. The same goes for `compileSdkVersion` (it also needs to be set to `29`).
+
+### iOS
+
+The app needs to create a Broadcast Upload Extension in order to cast a full screenshare (beyond its own screens). The `example` directory contains all the working code needed to handle a sample buffers (both video and audio) properly using modified `GoogleWebRTC` framework.
+
+The app needs to share data with the extension in some way and one of them is by creating an App Group and sharing same `NSUserDefaults`. This is also used in `SampleHandler` file of the example project. In order for this to work, both the app and the extension should be in the same app group.
+
+Some parts of `GoogleWebRTC` that are being used support only ARM64 architecture, so the project won't compile if `armv7` or `armv7s` archs are included.
 
 ## Contributing
+
 The project is inseparable from the contributors of the community.
+
 - [CloudWebRTC](https://github.com/cloudwebrtc) - Original Author
-- [RainwayApp](https://github.com/rainwayapp) - Sponsor from Paypal
+- [RainwayApp](https://github.com/rainwayapp) - Sponsor
+- [亢少军](https://github.com/kangshaojun) - Sponsor
 
 ### Example
+
 For more examples, please refer to [flutter-webrtc-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo/).
 
 ## Contributors
