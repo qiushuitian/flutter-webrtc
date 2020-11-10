@@ -26,7 +26,7 @@
                                      methodChannelWithName:@"FlutterWebRTC.Method"
                                      binaryMessenger:[registrar messenger]];
 //    UIViewController *viewController = (UIViewController *)registrar.messenger;
-    UIViewController * viewController = [UIApplication sharedApplication].delegate.window.rootViewController;
+    UIViewController * viewController = [UIApplication sharedApplication].keyWindow.rootViewController;
     FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
                                                                        registrar:registrar
                                                                        messenger:[registrar messenger]
@@ -580,6 +580,7 @@
         if (@available(iOS 12.0, *)) {
             RPSystemBroadcastPickerView* broadcastPicker = [[RPSystemBroadcastPickerView alloc] initWithFrame:CGRectZero];
             broadcastPicker.preferredExtension = preferredExtension;
+            broadcastPicker.showsMicrophoneButton = true;
             broadcastPicker.backgroundColor = [UIColor clearColor];
             
             dispatch_async(dispatch_get_main_queue(), ^(void){
@@ -587,11 +588,17 @@
                 UIButton* tap = [broadcastPicker.subviews firstObject];
                 [tap sendActionsForControlEvents:UIControlEventTouchUpInside];
             });
+            
+
+
         } else {
             // Fallback on earlier versions
         }
         
-        result(nil);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            result(nil);
+        });
+        
     } else if ([@"setUserData" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* suiteName = argsMap[@"suiteName"];
@@ -603,6 +610,8 @@
         [userDefaults setObject:nickname forKey:@"nickname"];
         [userDefaults setObject:roomId forKey:@"roomId"];
         [userDefaults setObject:roomSecret forKey:@"roomSecret"];
+        [userDefaults synchronize];
+        
         
         result(nil);
     } else if ([@"removeUserData" isEqualToString:call.method]) {
@@ -613,7 +622,7 @@
         [userDefaults removeObjectForKey:@"nickname"];
         [userDefaults removeObjectForKey:@"roomId"];
         [userDefaults removeObjectForKey:@"roomSecret"];
-        
+        [userDefaults synchronize];
         result(nil);
     } else {
         result(FlutterMethodNotImplemented);
