@@ -173,6 +173,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
     getUserMediaImpl.stopMe();
     context.unbindService(connection);
+    getUserMediaImpl = null;
     result.success(null);
   }
 
