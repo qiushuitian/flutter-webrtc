@@ -21,17 +21,22 @@ class MediaDevices {
       mediaConstraints.putIfAbsent('audio', () => false);
 
       final mediaDevices = html.window.navigator.mediaDevices;
-      html.MediaStream jsStream;
-      if (mediaDevices != null) {
-        jsStream = await mediaDevices.getUserMedia(mediaConstraints);
+      if (jsutil.hasProperty(mediaDevices, 'getUserMedia')) {
+        final arg = JsObject.jsify(mediaConstraints);
+        final jsStream = await jsutil.promiseToFuture<html.MediaStream>(
+            jsutil.callMethod(mediaDevices, 'getUserMedia', [arg]));
+        return MediaStream(jsStream, 'local');
       } else {
-        jsStream = await html.window.navigator.getUserMedia(
+        final jsStream = await html.window.navigator.getUserMedia(
             audio: mediaConstraints['audio'] ?? false,
             video: mediaConstraints['video'] ?? false);
+        return MediaStream(jsStream, 'local');
       }
-      return MediaStream(jsStream, 'local');
     } catch (e) {
-      throw 'Unable to getUserMedia: ${e.toString()}';
+      final jsStream = await html.window.navigator.getUserMedia(
+          audio: mediaConstraints['audio'] ?? false,
+          video: mediaConstraints['video'] ?? false);
+      return MediaStream(jsStream, 'local');
     }
   }
 
