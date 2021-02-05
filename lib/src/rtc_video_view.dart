@@ -71,7 +71,7 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue> {
   MediaStream get srcObject => _srcObject;
 
   set srcObject(MediaStream stream) {
-    if (textureId == null) throw 'Call initialize before setting the stream';
+    if (textureId == null) return;
 
     _srcObject = stream;
     _channel.invokeMethod('videoRendererSetSrcObject', <String, dynamic>{
